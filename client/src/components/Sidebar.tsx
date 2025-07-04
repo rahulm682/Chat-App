@@ -41,7 +41,6 @@ const Sidebar = ({
         const { data } = await API.get("/chats", {
           headers: { Authorization: `Bearer ${user?.token}` },
         });
-        console.log("📱 Chats received from backend:", data);
         setChats(data);
         // Call onChatsLoaded to restore selected chat from URL
         if (onChatsLoaded) {
@@ -57,21 +56,15 @@ const Sidebar = ({
   // Listen for new messages to update chat list
   useEffect(() => {
     const socket = getSocket();
-    console.log("🔌 Sidebar: Socket object:", socket);
-    console.log("🔌 Sidebar: User ID:", user?._id);
     
     if (!socket || !user?._id) {
-      console.log("🔌 Sidebar: Socket or user not available, returning early");
       return;
     }
 
     // Join user's personal room to receive messages for all their chats
-    console.log("🔌 Sidebar: Joining user room:", user._id);
     socket.emit("setup", user._id);
 
     const handleNewMessage = async (message: Message) => {
-      console.log("📱 Sidebar: New message received, updating chat list:", message);
-      
       try {
         // Fetch updated chat data from backend to get properly populated latestMessage
         const { data: updatedChats } = await API.get("/chats", {
@@ -80,7 +73,6 @@ const Sidebar = ({
         
         setChats(updatedChats);
       } catch (error) {
-        console.error("Failed to fetch updated chats:", error);
         // Fallback: update locally if fetch fails
         setChats((prevChats) => {
           const chatIndex = prevChats.findIndex((chat) => chat._id === message.chat);
@@ -101,23 +93,10 @@ const Sidebar = ({
       }
     };
 
-    console.log("🔌 Sidebar: Adding message-received listener");
     socket.on("message-received", handleNewMessage);
 
-    // Add connection status listener for debugging
-    socket.on("connect", () => {
-      console.log("🔌 Sidebar: Socket connected with ID:", socket.id);
-    });
-
-    socket.on("disconnect", () => {
-      console.log("🔌 Sidebar: Socket disconnected");
-    });
-
     return () => {
-      console.log("🔌 Sidebar: Cleaning up socket listeners");
       socket.off("message-received", handleNewMessage);
-      socket.off("connect");
-      socket.off("disconnect");
     };
   }, [user]);
 

@@ -30,7 +30,6 @@ const MessageInput = ({
     );
 
     setText("");
-    console.log("Message sent:", data);
   };
 
   const handleChange = (e: any) => {

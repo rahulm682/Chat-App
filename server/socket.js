@@ -39,29 +39,22 @@ const setupSocket = (io) => {
   });
 
   io.on("connection", (socket) => {
-    console.log("User connected:", socket.id, "User ID:", socket.userId);
-
     // Add user to online users immediately upon connection
     if (socket.userId) {
       onlineUsers.set(socket.userId, socket.id);
-      console.log("🔌 Server: User added to online users:", socket.userId);
       
       // Emit the updated list of online users to all clients
       io.emit("online-users", Array.from(onlineUsers.keys()));
-      console.log("🔌 Server: Emitted online users list:", Array.from(onlineUsers.keys()));
     }
 
     // Join user-specific room for personal notifications
     socket.on("setup", (userId) => {
-      console.log("🔌 Server: User setup event received for userId:", userId);
       socket.join(userId);
-      console.log("🔌 Server: User joined room:", userId, "with socket ID:", socket.id);
     });
 
     // Join chat room
     socket.on("join-chat", (chatId) => {
       socket.join(chatId);
-      console.log(`User joined chat: ${chatId}`);
     });
 
     // Typing indicator
@@ -75,26 +68,21 @@ const setupSocket = (io) => {
 
     // Send message event
     socket.on("new-message", async (messageData) => {
-      console.log("new-message", messageData);
     });
 
     // Disconnect event
     socket.on("disconnect", () => {
-      console.log("User disconnected:", socket.id, "User ID:", socket.userId);
       
       if (socket.userId) {
         onlineUsers.delete(socket.userId);
-        console.log("🔌 Server: User removed from online users:", socket.userId);
         
         // Emit the updated list of online users to all clients
         io.emit("online-users", Array.from(onlineUsers.keys()));
-        console.log("🔌 Server: Emitted updated online users list:", Array.from(onlineUsers.keys()));
       }
     });
 
     // Handle request for current online users
     socket.on("get-online-users", () => {
-      console.log("🔌 Server: Client requested online users list");
       socket.emit("online-users", Array.from(onlineUsers.keys()));
     });
   });

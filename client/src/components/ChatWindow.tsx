@@ -50,9 +50,6 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
   const isOtherUserOnline = otherUser
     ? onlineUsers.includes(String(otherUser._id))
     : false;
-  console.log("🔌 ChatWindow: Online users from context:", onlineUsers);
-  console.log("🔌 ChatWindow: Other user:", otherUser);
-  console.log("🔌 ChatWindow: isOtherUserOnline:", isOtherUserOnline);
   const currentChatRef = useRef<Chat | null>(null);
   useEffect(() => {
     currentChatRef.current = chat;
@@ -145,37 +142,27 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
 
     const socket = getSocket();
     if (!socket) {
-      console.error("🔌 Socket not available in ChatWindow");
       return;
     }
 
-    console.log("🔌 Joining chat room:", chat._id);
     socket.emit("join-chat", chat._id);
 
     const handleMessageReceived = (msg: Message) => {
-      console.log("🔌 Message received via socket:", msg);
-      console.log("🔌 Current chat ID:", currentChatRef.current?._id);
-      console.log("🔌 Message chat ID:", msg.chat);
-      console.log(msg.chat, currentChatRef.current?._id);
-
-      if (msg.chat_id === currentChatRef.current?._id) {
-        console.log("🔌 Adding message to current chat");
+      if (msg.chat._id === currentChatRef.current?._id) {
         setIsNewMessage(true); // This is a new real-time message
         // Ensure the message has an empty reactions array
         const messageWithReactions = { ...msg, reactions: msg.reactions || [] };
         setMessages((prev) => [...prev, messageWithReactions]);
       } else {
-        console.log("🔌 Message not for current chat, ignoring");
+        // Message not for current chat, ignoring
       }
     };
 
     const handleTyping = () => {
-      console.log("🔌 Typing indicator received");
       setIsTyping(true);
     };
 
     const handleStopTyping = () => {
-      console.log("🔌 Stop typing indicator received");
       setIsTyping(false);
     };
 
@@ -183,14 +170,12 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
     socket.on("typing", handleTyping);
     socket.on("stop-typing", handleStopTyping);
     socket.on("reaction-added", (data: { messageId: string; reaction: Reaction }) => {
-      console.log("🔌 Reaction added:", data);
       handleReactionUpdate(data.messageId, [
         ...(messages.find(m => m._id === data.messageId)?.reactions || []),
         data.reaction
       ]);
     });
     socket.on("reaction-removed", (data: { messageId: string; userId: string }) => {
-      console.log("🔌 Reaction removed:", data);
       const message = messages.find(m => m._id === data.messageId);
       if (message) {
         const updatedReactions = message.reactions?.filter(r => r.user._id !== data.userId) || [];
@@ -199,7 +184,6 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
     });
 
     return () => {
-      console.log("🔌 Cleaning up socket listeners for chat:", chat._id);
       socket.off("message-received", handleMessageReceived);
       socket.off("typing", handleTyping);
       socket.off("stop-typing", handleStopTyping);

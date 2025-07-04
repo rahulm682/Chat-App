@@ -6,7 +6,6 @@ const cloudinary = require("../config/cloudinary");
 
 // Send message
 const sendMessage = async (req, res) => {
-  console.log("sendMessage", req.body);
   const { content, chatId, type = "text" } = req.body;
 
   if (!content || !chatId) {
@@ -41,25 +40,18 @@ const sendMessage = async (req, res) => {
 
     // Get io instance
     const io = req.app.get("io");
-    console.log("🔌 Backend: Emitting message to chat room:", chatId);
-    console.log("🔌 Backend: Message data:", newMessage);
 
     // Emit to all participants' personal rooms
     // This ensures each user receives the message exactly once
     const chat = await Chat.findById(chatId).populate("participants");
     if (chat) {
       chat.participants.forEach((participant) => {
-        console.log(
-          "🔌 Backend: Emitting to participant room:",
-          participant._id.toString()
-        );
         io.to(participant._id.toString()).emit("message-received", newMessage);
       });
     }
 
     res.status(201).json(newMessage);
   } catch (err) {
-    console.error("Send Message Error:", err);
     res.status(500).json({ message: "Failed to send message" });
   }
 };
@@ -111,7 +103,6 @@ const getMessages = async (req, res) => {
       total,
     });
   } catch (err) {
-    console.error("Get Messages Error:", err);
     res.status(500).json({ message: "Failed to fetch messages" });
   }
 };
@@ -138,7 +129,6 @@ const uploadFile = async (req, res) => {
     const result = await streamUpload(req.file.buffer);
     res.status(200).json({ url: result.secure_url });
   } catch (error) {
-    console.error("File Upload Error:", error);
     res.status(500).json({ message: "Upload failed" });
   }
 };

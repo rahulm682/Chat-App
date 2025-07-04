@@ -14,7 +14,6 @@ const accessChat = async (req, res) => {
     .populate("participants", "-passwordHash")
     .populate("latestMessage");
 
-    console.log("req.body", req.body);
   if (chat) {
     return res.json(chat);
   }

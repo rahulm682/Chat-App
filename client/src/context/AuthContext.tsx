@@ -19,7 +19,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (user?.token) {
-      console.log("🔌 Connecting socket with token:", user.token.substring(0, 20) + "...");
       connectSocket(user.token);
     }
   }, [user]);
@@ -34,8 +33,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Clear user from state and localStorage
     setUser(null);
     localStorage.removeItem("user");
-    
-    console.log("🔌 User logged out, socket disconnected");
   };
 
   return (

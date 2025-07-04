@@ -28,8 +28,8 @@ mongoose
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-.then(() => console.log("MongoDB connected"))
-.catch(err => console.error("DB Error:", err));
+.then(() => {})
+.catch(err => {});
 
 app.use(cors({
   origin: "http://localhost:5173", // or your deployed frontend URL
@@ -46,4 +46,4 @@ app.use("/api/reactions", reactionRoutes);
 setupSocket(io);
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => {});
