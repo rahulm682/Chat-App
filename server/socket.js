@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "./models/User.js";
 
 const onlineUsers = new Map(); // Track connected users
+const usersViewingChats = new Map(); // Track which users are viewing which chats
 
 // Helper function to extract user ID from JWT token
 const getUserIdFromToken = async (token) => {
@@ -57,6 +58,19 @@ const setupSocket = (io) => {
       socket.join(chatId);
     });
 
+    // Track when user is actively viewing a chat
+    socket.on("user-viewing-chat", (data) => {
+      const { chatId, userId } = data;
+      if (chatId && userId) {
+        // Store which user is viewing which chat
+        if (!usersViewingChats.has(userId)) {
+          usersViewingChats.set(userId, new Set());
+        }
+        usersViewingChats.get(userId).add(chatId);
+        console.log(`User ${userId} is now viewing chat ${chatId}`);
+      }
+    });
+
     // Typing indicator
     socket.on("typing", (chatId) => {
       socket.to(chatId).emit("typing");
@@ -76,6 +90,9 @@ const setupSocket = (io) => {
       if (socket.userId) {
         onlineUsers.delete(socket.userId);
         
+        // Remove user from viewing chats tracking
+        usersViewingChats.delete(socket.userId);
+        
         // Emit the updated list of online users to all clients
         io.emit("online-users", Array.from(onlineUsers.keys()));
       }
@@ -88,4 +105,48 @@ const setupSocket = (io) => {
   });
 };
 
-export default { setupSocket };
+// Helper function to check if a user is viewing a specific chat
+const isUserViewingChat = (userId, chatId) => {
+  const userViewingChats = usersViewingChats.get(userId);
+  return userViewingChats && userViewingChats.has(chatId);
+};
+
+// Helper function to automatically mark messages as read for users viewing the chat
+const autoMarkMessagesAsRead = async (chatId, messageId) => {
+  try {
+    const chat = await Chat.findById(chatId).populate("participants");
+    if (!chat) return;
+
+    const usersToMarkAsRead = [];
+    const allParticipants = [];
+    
+    // Check each participant
+    chat.participants.forEach((participant) => {
+      const participantId = participant._id.toString();
+      allParticipants.push(participantId);
+      
+      // If user is viewing this chat, mark the message as read for them
+      if (isUserViewingChat(participantId, chatId)) {
+        usersToMarkAsRead.push(participantId);
+      }
+    });
+
+    console.log(`Chat ${chatId} participants:`, allParticipants);
+    console.log(`Users viewing this chat:`, usersToMarkAsRead);
+    console.log(`All users viewing chats:`, Array.from(usersViewingChats.entries()));
+
+    // Update the message to mark it as read for these users
+    if (usersToMarkAsRead.length > 0) {
+      await Message.findByIdAndUpdate(messageId, {
+        $addToSet: { readBy: { $each: usersToMarkAsRead } }
+      });
+      console.log(`Auto-marked message ${messageId} as read for users:`, usersToMarkAsRead);
+    } else {
+      console.log(`No users are viewing chat ${chatId}, message will remain unread`);
+    }
+  } catch (error) {
+    console.error("Error auto-marking message as read:", error);
+  }
+};
+
+export default { setupSocket, autoMarkMessagesAsRead };

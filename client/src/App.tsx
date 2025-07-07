@@ -5,15 +5,17 @@ import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Chat from "./pages/Chat";
-import { useAuth } from "./context/AuthContext";
 import { useTheme } from "./context/ThemeContext";
 import { createAppTheme } from "./theme";
+import { useAppDispatch, useAppSelector } from './store/hooks';
+import { selectCurrentUser, setUser } from './store/slices/userSlice';
+import { connectSocket } from './socket/socket';
 
 const App = () => {
-  const { user } = useAuth();
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
-
+  const dispatch = useAppDispatch();
+  const user = useAppSelector(selectCurrentUser);
   useEffect(() => {
     // Simulate loading time for better UX
     const timer = setTimeout(() => {
@@ -22,6 +24,19 @@ const App = () => {
 
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      dispatch(setUser(parsedUser));
+      
+      // Connect socket if user has a token
+      if (parsedUser.token) {
+        connectSocket(parsedUser.token);
+      }
+    }
+  }, [dispatch]);
 
   if (isLoading) {
     return (

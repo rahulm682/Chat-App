@@ -9,54 +9,30 @@ import UserSearchDialog from "./UserSearchDialog";
 import UserProfile from "./UserProfile";
 import ChatListItem from "./ChatListItem";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
-import API from "../api/axios";
-import { useAuth } from "../context/AuthContext";
 import { getSocket } from "../socket/socket";
-import type { User, Message } from "../types/auth";
+import type { Message, User } from "../types/auth";
+import { useGetChatsQuery, useInvalidateChatListMutation } from '../store/services/chatApi';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { setSelectedChatId } from '../store/slices/chatSlice';
+import { selectCurrentUser } from "../store/slices/userSlice";
 
-interface Chat {
-  _id: string;
-  isGroup: boolean;
-  participants: User[];
-  groupAdmin?: User;
-  chatName?: string;
-  latestMessage?: Message;
-}
-
-const Sidebar = ({ 
-  onSelectChat, 
-  onChatsLoaded 
-}: { 
-  onSelectChat: (chat: Chat) => void;
-  onChatsLoaded?: (chats: Chat[]) => void;
-}) => {
-  const [chats, setChats] = useState<Chat[]>([]);
+const Sidebar = ({ onSelectChat }: { onSelectChat: (chat: any) => void }) => {
   const [openDialog, setOpenDialog] = useState(false);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const dispatch = useAppDispatch();
+  const selectedChatId = useAppSelector(state => state.chat.selectedChatId);
+  const { data: chats = [], refetch, isLoading, error } = useGetChatsQuery();
+  const [invalidateChatList] = useInvalidateChatListMutation();
+  const user = useAppSelector(selectCurrentUser) as User | null;
 
+  // Debug: Log chat list updates
   useEffect(() => {
-    const fetchChats = async () => {
-      try {
-        const { data } = await API.get("/chats", {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
-        setChats(data);
-        // Call onChatsLoaded to restore selected chat from URL
-        if (onChatsLoaded) {
-          onChatsLoaded(data);
-        }
-      } catch (error) {
-        console.error("Failed to fetch chats:", error);
-      }
-    };
-    fetchChats();
-  }, [user, onChatsLoaded]);
+    // Log total unread count
+    const totalUnread = chats.reduce((sum, chat) => sum + (chat.unreadCount || 0), 0);
+  }, [chats, selectedChatId, user, isLoading, error]);
 
   // Listen for new messages to update chat list
   useEffect(() => {
     const socket = getSocket();
-    
     if (!socket || !user?._id) {
       return;
     }
@@ -65,31 +41,16 @@ const Sidebar = ({
     socket.emit("setup", user._id);
 
     const handleNewMessage = async (message: Message) => {
-      try {
-        // Fetch updated chat data from backend to get properly populated latestMessage
-        const { data: updatedChats } = await API.get("/chats", {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
-        
-        setChats(updatedChats);
-      } catch (error) {
-        // Fallback: update locally if fetch fails
-        setChats((prevChats) => {
-          const chatIndex = prevChats.findIndex((chat) => chat._id === message.chat);
+      // Only invalidate cache if message is from another user and not for the currently selected chat
+      if (message.sender._id !== user._id && message.chat !== selectedChatId) {
+        try {
+          // Invalidate chat list cache to trigger refetch with updated unread counts
+          await invalidateChatList();
           
-          if (chatIndex === -1) {
-            return prevChats;
-          }
-
-          const updatedChat = {
-            ...prevChats[chatIndex],
-            latestMessage: message,
-            updatedAt: new Date().toISOString(),
-          };
-
-          const newChats = prevChats.filter((_, index) => index !== chatIndex);
-          return [updatedChat, ...newChats];
-        });
+          // Also try manual refetch as backup
+          await refetch();
+        } catch (error) {
+        }
       }
     };
 
@@ -98,9 +59,7 @@ const Sidebar = ({
     return () => {
       socket.off("message-received", handleNewMessage);
     };
-  }, [user]);
-
-
+  }, [user, invalidateChatList, selectedChatId, refetch]);
 
   return (
     <>
@@ -153,8 +112,9 @@ const Sidebar = ({
               chat={chat}
               isSelected={selectedChatId === chat._id}
               currentUserId={user?._id || ""}
+              unreadCount={chat.unreadCount || 0}
               onClick={() => {
-                setSelectedChatId(chat._id);
+                dispatch(setSelectedChatId(chat._id));
                 onSelectChat(chat);
               }}
             />
@@ -167,11 +127,8 @@ const Sidebar = ({
         open={openDialog}
         onClose={() => setOpenDialog(false)}
         onChatCreated={(chat) => {
-          setChats((prev) => {
-            const exists = prev.find((c) => c._id === chat._id);
-            return exists ? prev : [chat, ...prev];
-          });
-          setSelectedChatId(chat._id);
+          // Optionally refetch chats
+          dispatch(setSelectedChatId(chat._id));
           onSelectChat(chat);
         }}
       />

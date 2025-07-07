@@ -7,13 +7,11 @@ import {
   ListItem,
   ListItemText,
   CircularProgress,
-  IconButton,
   InputAdornment
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import { useState, useEffect } from "react";
-import API from "../api/axios";
-import { useAuth } from "../context/AuthContext";
+import { useState } from "react";
+import { useSearchUsersQuery, useCreateChatMutation } from '../store/services/chatApi';
 
 interface Props {
   open: boolean;
@@ -23,35 +21,12 @@ interface Props {
 
 const UserSearchDialog: React.FC<Props> = ({ open, onClose, onChatCreated }) => {
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
-
-  useEffect(() => {
-    if (search.trim().length < 2) return;
-
-    const delayDebounce = setTimeout(async () => {
-      try {
-        setLoading(true);
-        const { data } = await API.get(`/users?search=${search}`, {
-          headers: { Authorization: `Bearer ${user?.token}` },
-        });
-        setResults(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }, 500);
-
-    return () => clearTimeout(delayDebounce);
-  }, [search]);
+  const { data: users = [], isLoading } = useSearchUsersQuery(search, { skip: !search });
+  const [createChat] = useCreateChatMutation();
 
   const handleChatStart = async (userId: string) => {
     try {
-      const { data } = await API.post("/chats", { userId }, {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      });
+      const data = await createChat({ userId }).unwrap();
       onChatCreated(data);
       onClose();
     } catch (err) {
@@ -71,13 +46,13 @@ const UserSearchDialog: React.FC<Props> = ({ open, onClose, onChatCreated }) => 
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
-                {loading ? <CircularProgress size={20} /> : <SearchIcon />}
+                {isLoading ? <CircularProgress size={20} /> : <SearchIcon />}
               </InputAdornment>
             ),
           }}
         />
         <List>
-          {results.map(u => (
+          {users.map(u => (
             <ListItem button key={u._id} onClick={() => handleChatStart(u._id)}>
               <ListItemText primary={u.name} secondary={u.email} />
             </ListItem>

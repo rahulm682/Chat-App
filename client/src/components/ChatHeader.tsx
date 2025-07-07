@@ -55,6 +55,7 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ otherUser, isOtherUserOnline })
                 bgcolor: "success.main",
                 border: "2px solid",
                 borderColor: "background.paper",
+                boxShadow: "0 0 4px rgba(76, 175, 80, 0.5)",
               }}
             />
           )}
@@ -83,28 +84,33 @@ const ChatHeader: React.FC<ChatHeaderProps> = ({ otherUser, isOtherUserOnline })
                 {otherUser.email}
               </Typography>
             )}
+            {isOtherUserOnline && (
+              <Typography variant="body2" color="success.main" sx={{ fontWeight: "medium" }}>
+                • Online
+              </Typography>
+            )}
           </Box>
         </Box>
       </Box>
 
       {/* Action Buttons */}
       <Box sx={{ display: "flex", gap: 1 }}>
-        <Tooltip title="Voice Call">
+        <Tooltip title="Voice Call (Coming Soon)">
           <IconButton size="small">
             <CallIcon />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Video Call">
+        <Tooltip title="Video Call (Coming Soon)">
           <IconButton size="small">
             <VideoCallIcon />
           </IconButton>
         </Tooltip>
-        <Tooltip title="Chat Info">
+        <Tooltip title="Chat Info (Coming Soon)">
           <IconButton size="small">
             <InfoIcon />
           </IconButton>
         </Tooltip>
-        <Tooltip title="More Options">
+        <Tooltip title="More Options (Coming Soon)">
           <IconButton size="small">
             <MoreVertIcon />
           </IconButton>

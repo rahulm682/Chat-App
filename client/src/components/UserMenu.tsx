@@ -33,11 +33,11 @@ const UserMenu: React.FC<UserMenuProps> = ({ anchorEl, onClose, onLogout }) => {
     >
       <MenuItem onClick={onClose}>
         <PersonIcon sx={{ mr: 2 }} />
-        Profile
+        Profile (Coming Soon)
       </MenuItem>
       <MenuItem onClick={onClose}>
         <SettingsIcon sx={{ mr: 2 }} />
-        Settings
+        Settings (Coming Soon)
       </MenuItem>
       <Divider />
       <MenuItem onClick={onLogout} sx={{ color: "error.main" }}>

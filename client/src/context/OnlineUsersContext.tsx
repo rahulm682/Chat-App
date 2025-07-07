@@ -1,30 +1,34 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { getSocket, onUserOnline } from "../socket/socket";
-import { useAuth } from "./AuthContext";
+import { useDispatch, useSelector } from 'react-redux';
+import { setOnlineUsers } from '../store/slices/onlineUsersSlice';
+import type { RootState } from '../store/index';
 
 const OnlineUsersContext = createContext<string[]>([]);
 
 export const useOnlineUsers = () => useContext(OnlineUsersContext);
 
-export const OnlineUsersProvider = ({ children }: { children: React.ReactNode }) => {
-  const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
-  const { user } = useAuth();
+const OnlineUsersProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const dispatch = useDispatch();
+  const onlineUsers = useSelector((state: RootState) => state.onlineUsers.onlineUsers);
 
   useEffect(() => {
-    if (!user?.token) {
-      setOnlineUsers([]);
-      return;
-    }
-
-    const unsubscribe = onUserOnline((users: string[]) => {
-      setOnlineUsers(users);
-    });
-
-    // Cleanup function
-    return () => {
-      unsubscribe();
+    const socket = getSocket();
+    if (!socket) return;
+    
+    const handleOnlineUsers = (users: string[]) => {
+      dispatch(setOnlineUsers(users));
     };
-  }, [user?.token]); // Only depend on token, not entire user object
+    
+    socket.on('online-users', handleOnlineUsers);
+    
+    // Request current online users when socket connects
+    socket.emit('get-online-users');
+    
+    return () => {
+      socket.off('online-users', handleOnlineUsers);
+    };
+  }, [dispatch]);
 
   return (
     <OnlineUsersContext.Provider value={onlineUsers}>
@@ -32,3 +36,5 @@ export const OnlineUsersProvider = ({ children }: { children: React.ReactNode })
     </OnlineUsersContext.Provider>
   );
 };
+
+export default OnlineUsersProvider;

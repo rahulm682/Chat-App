@@ -14,8 +14,10 @@ import {
 } from "@mui/material";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import API from "../api/axios";
-import { useAuth } from "../context/AuthContext";
+import { useRegisterMutation } from '../store/services/chatApi';
+import { useAppDispatch } from '../store/hooks';
+import { setUser } from '../store/slices/userSlice';
+import { connectSocket } from '../socket/socket';
 
 const Register = () => {
   const [name, setName] = useState("");
@@ -26,8 +28,10 @@ const Register = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { setUser } = useAuth();
+  
   const navigate = useNavigate();
+  const [register] = useRegisterMutation();
+  const dispatch = useAppDispatch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,9 +53,15 @@ const Register = () => {
     }
 
     try {
-      const { data } = await API.post("/users/register", { name, email, password });
-      setUser(data);
-      localStorage.setItem("user", JSON.stringify(data));
+      const result = await register({ name, email, password }).unwrap();
+      dispatch(setUser(result));
+      localStorage.setItem("user", JSON.stringify(result));
+      
+      // Connect socket after successful registration
+      if (result.token) {
+        connectSocket(result.token);
+      }
+      
       navigate("/chats");
     } catch (err: any) {
       setError(err.response?.data?.message || "Registration failed. Please try again.");

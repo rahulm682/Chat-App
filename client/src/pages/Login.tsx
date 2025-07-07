@@ -14,8 +14,10 @@ import {
 } from "@mui/material";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
-import API from "../api/axios";
-import { useAuth } from "../context/AuthContext";
+import { useLoginMutation } from '../store/services/chatApi';
+import { useAppDispatch } from '../store/hooks';
+import { setUser } from '../store/slices/userSlice';
+import { connectSocket } from '../socket/socket';
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -23,8 +25,9 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const { setUser } = useAuth();
   const navigate = useNavigate();
+  const [login] = useLoginMutation();
+  const dispatch = useAppDispatch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,9 +35,15 @@ const Login = () => {
     setError("");
 
     try {
-      const { data } = await API.post("/users/login", { email, password });
-      setUser(data);
-      localStorage.setItem("user", JSON.stringify(data));
+      const result = await login({ email, password }).unwrap();
+      dispatch(setUser(result));
+      localStorage.setItem("user", JSON.stringify(result));
+      
+      // Connect socket after successful login
+      if (result.token) {
+        connectSocket(result.token);
+      }
+      
       navigate("/chats");
     } catch (err: any) {
       setError(err.response?.data?.message || "Login failed. Please check your credentials.");

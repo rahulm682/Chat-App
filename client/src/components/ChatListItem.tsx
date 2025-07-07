@@ -11,7 +11,6 @@ import {
 } from "@mui/material";
 import type { User, Message } from "../types/auth";
 import { formatTimestamp, formatTimeOnly } from "../utils/timestamp";
-import { useNotifications } from "../context/NotificationContext";
 
 interface Chat {
   _id: string;
@@ -26,6 +25,7 @@ interface ChatListItemProps {
   chat: Chat;
   isSelected: boolean;
   currentUserId: string;
+  unreadCount: number;
   onClick: () => void;
 }
 
@@ -33,10 +33,9 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
   chat,
   isSelected,
   currentUserId,
+  unreadCount,
   onClick,
 }) => {
-  const { unreadCounts } = useNotifications();
-  const unreadCount = unreadCounts[chat._id] || 0;
   // Helper to get chat display name and avatar
   const getChatDisplay = () => {
     if (chat.isGroup) {
@@ -53,10 +52,15 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
 
   const formatMessagePreview = (message: Message) => {
     const senderName = message.sender._id === currentUserId ? "You" : message.sender.name;
-    return `${senderName}: ${message.content}`;
+    return (
+      <span>
+        <span style={{ fontWeight: 'normal', color: undefined }}>
+          {senderName}
+        </span>
+        {`: ${message.content}`}
+      </span>
+    );
   };
-
-
 
   return (
     <ListItem
@@ -77,7 +81,12 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
         badgeContent={unreadCount}
         color="primary"
         max={99}
+        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
         sx={{
+          position: 'relative',
+          top: 0,
+          left: 0,
+          zIndex: 1,
           "& .MuiBadge-badge": {
             fontSize: "0.7rem",
             height: "18px",
@@ -133,6 +142,7 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
               color="text.secondary"
               noWrap
               sx={{ maxWidth: "100%" }}
+              component="span"
             >
               {formatMessagePreview(chat.latestMessage)}
             </Typography>

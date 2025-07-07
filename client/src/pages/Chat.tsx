@@ -1,15 +1,15 @@
 import {
   Box,
   useTheme,
-  useMediaQuery,
 } from "@mui/material";
 import { useState, useEffect, useCallback } from "react";
 import Sidebar from "../components/Sidebar";
 import ChatWindow from "../components/ChatWindow";
 import TopNavbar from "../components/TopNavbar";
 import UserMenu from "../components/UserMenu";
-import { useAuth } from "../context/AuthContext";
 import type { User, Message } from "../types/auth";
+import { useAppSelector } from "../store/hooks";
+import { logout, selectCurrentUser } from "../store/slices/userSlice";
 
 interface Chat {
   _id: string;
@@ -26,7 +26,7 @@ const Chat = () => {
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(
     null
   );
-  const { user, logout } = useAuth();
+  const user = useAppSelector(selectCurrentUser);
   const theme = useTheme();
 
   // Keep sidebar always visible

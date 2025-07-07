@@ -17,7 +17,6 @@ import {
 } from "@mui/icons-material";
 import type { User } from "../types/auth";
 import ThemeToggle from "./ThemeToggle";
-import { useNotifications } from "../context/NotificationContext";
 
 interface TopNavbarProps {
   user: User | null;
@@ -25,7 +24,6 @@ interface TopNavbarProps {
 }
 
 const TopNavbar: React.FC<TopNavbarProps> = ({ user, onUserMenuOpen }) => {
-  const { totalUnreadCount } = useNotifications();
   
   return (
     <AppBar
@@ -47,41 +45,17 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ user, onUserMenuOpen }) => {
           >
             Chat App
           </Typography>
-          {totalUnreadCount > 0 && (
-            <Chip
-              label={totalUnreadCount}
-              color="primary"
-              size="small"
-              sx={{ 
-                ml: 1,
-                fontSize: "0.7rem",
-                height: "20px",
-                "& .MuiChip-label": {
-                  px: 1,
-                },
-              }}
-            />
-          )}
         </Box>
 
         {/* Search Button */}
-        <Tooltip title="Search">
+        <Tooltip title="Search (Coming Soon)">
           <IconButton color="inherit" sx={{ mr: 1 }}>
             <SearchIcon />
           </IconButton>
         </Tooltip>
 
-        {/* Notifications */}
-        <Tooltip title="Notifications">
-          <IconButton color="inherit" sx={{ mr: 1 }}>
-            <Badge badgeContent={0} color="error">
-              <NotificationsIcon />
-            </Badge>
-          </IconButton>
-        </Tooltip>
-
         {/* Settings */}
-        <Tooltip title="Settings">
+        <Tooltip title="Settings (Coming Soon)">
           <IconButton color="inherit" sx={{ mr: 1 }}>
             <SettingsIcon />
           </IconButton>

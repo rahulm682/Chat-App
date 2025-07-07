@@ -3,37 +3,37 @@ import { Box, Typography } from "@mui/material";
 import { useEffect, useRef } from "react";
 import MessageItem from "./MessageItem";
 import DateSeparator from "./DateSeparator";
-import UnreadMessageHighlight from "./UnreadMessageHighlight";
-import type { Message, Reaction } from "../types/auth";
-import { useAuth } from "../context/AuthContext";
-import { useNotifications } from "../context/NotificationContext";
+import type { ApiMessage, ApiReaction } from "../store/services/chatApi";
 import { isSameDay } from "../utils/timestamp";
+import { useAppSelector } from "../store/hooks";
+import { selectCurrentUser } from "../store/slices/userSlice";
 
 interface MessageListProps {
-  messages: Message[];
+  messages: ApiMessage[];
   chatId: string;
   loading: boolean;
   isNewMessage?: boolean; // Flag to indicate if this is a new real-time message
   containerRef?: React.Ref<HTMLDivElement>;
-  onReactionUpdate: (messageId: string, reactions: Reaction[]) => void;
+  onReactionUpdate: (messageId: string, reactions: ApiReaction[]) => void;
+  refetchMessages?: () => void;
   [key: string]: any; // for extra props like data-message-list-container
 }
 
-const MessageList = ({
+const MessageList = React.forwardRef<HTMLDivElement, MessageListProps>(({
   messages,
   chatId,
   loading,
   isNewMessage = false,
   containerRef,
   onReactionUpdate,
+  refetchMessages,
   ...rest
-}: MessageListProps) => {
+}, ref) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previousMessageCount = useRef(messages.length);
   const isInitialLoad = useRef(true);
-  const { user } = useAuth();
-  const { unreadMessages } = useNotifications();
-
+  const user = useAppSelector(selectCurrentUser);
+  
   // Scroll to bottom on initial load and for new real-time messages
   useEffect(() => {
     if (isInitialLoad.current && messages.length > 0 && !loading) {
@@ -54,7 +54,7 @@ const MessageList = ({
 
   return (
     <Box
-      ref={containerRef}
+      ref={ref as any}
       {...rest}
       sx={{
         p: 2,
@@ -72,24 +72,19 @@ const MessageList = ({
       )}
 
       {/* Messages */}
-      {messages.map((msg, index) => {
-        const showDateSeparator = index === 0 || 
+      {messages.map((msg: ApiMessage, index: number) => {
+        const showDateSeparator =
+          index === 0 ||
           !isSameDay(msg.createdAt, messages[index - 1].createdAt);
-        
-        const isUnread = unreadMessages[chatId]?.some(
-          unreadMsg => unreadMsg.messageId === msg._id
-        ) || false;
-        
         return (
           <React.Fragment key={msg._id}>
             {showDateSeparator && <DateSeparator date={msg.createdAt} />}
-            <UnreadMessageHighlight messageId={msg._id} isUnread={isUnread}>
-              <MessageItem
-                message={msg}
-                isOwnMessage={msg.sender._id === user?._id}
-                onReactionUpdate={onReactionUpdate}
-              />
-            </UnreadMessageHighlight>
+            <MessageItem
+              message={msg}
+              isOwnMessage={msg.sender._id === user?._id}
+              onReactionUpdate={onReactionUpdate}
+              refetchMessages={refetchMessages}
+            />
           </React.Fragment>
         );
       })}
@@ -98,6 +93,6 @@ const MessageList = ({
       <div ref={messagesEndRef} />
     </Box>
   );
-};
+});
 
 export default MessageList;

@@ -18,23 +18,29 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-    cors: { origin: process.env.CLIENT_URL, credentials: true }
+  cors: { origin: process.env.CLIENT_URL, credentials: true },
 });
 
-app.set('io', io);
+app.set("io", io);
 
 mongoose
-.connect(process.env.MONGO_URI, {
+  .connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
-.then(() => {})
-.catch(err => {});
+  .then(() => {
+    console.log("Connected to MongoDB");
+  })
+  .catch((err) => {
+    console.log(err);
+  });
 
-app.use(cors({
-  origin: "http://localhost:5173", // or your deployed frontend URL
-  credentials: true,               // allow cookies/auth headers if needed
-}));
+app.use(
+  cors({
+    origin: "http://localhost:5173", // or your deployed frontend URL
+    credentials: true, // allow cookies/auth headers if needed
+  })
+);
 app.use(express.json());
 app.use(errorHandler);
 

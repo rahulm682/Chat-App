@@ -15,12 +15,17 @@ const sendMessage = async (req, res) => {
   }
 
   try {
+    console.log(`Creating message in chat ${chatId} by user ${req.user._id}`);
+    
     let newMessage = await Message.create({
       sender: req.user._id,
       content,
       chat: chatId,
       type,
+      readBy: [req.user._id], // Mark as read by sender immediately
     });
+
+    console.log(`Message created with readBy:`, newMessage.readBy);
 
     newMessage = await newMessage.populate("sender", "name avatarUrl");
     newMessage = await newMessage.populate({
@@ -41,10 +46,15 @@ const sendMessage = async (req, res) => {
     // Get io instance
     const io = req.app.get("io");
 
+    // Auto-mark message as read for users who are actively viewing this chat
+    const { autoMarkMessagesAsRead } = require("../socket").default;
+    await autoMarkMessagesAsRead(chatId, newMessage._id);
+
     // Emit to all participants' personal rooms
     // This ensures each user receives the message exactly once
     const chat = await Chat.findById(chatId).populate("participants");
     if (chat) {
+      console.log(`Emitting message to participants:`, chat.participants.map(p => p._id));
       chat.participants.forEach((participant) => {
         io.to(participant._id.toString()).emit("message-received", newMessage);
       });
@@ -52,6 +62,7 @@ const sendMessage = async (req, res) => {
 
     res.status(201).json(newMessage);
   } catch (err) {
+    console.error('Error sending message:', err);
     res.status(500).json({ message: "Failed to send message" });
   }
 };
@@ -62,15 +73,27 @@ const getMessages = async (req, res) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 15;
 
+  console.log(`Getting messages for chat ${chatId}, page ${page}, limit ${limit}`);
+
   try {
     // Count total messages for this chat
     const total = await Message.countDocuments({ chat: chatId });
+    console.log(`Total messages in chat: ${total}`);
+
+    // For chat applications, we want to show latest messages first
+    // Page 1: Latest messages (newest at bottom)
+    // Page 2+: Older messages (when scrolling up)
+    const skip = (page - 1) * limit;
+    console.log(`Skip: ${skip}, will fetch ${limit} messages`);
 
     const messages = await Message.find({ chat: chatId })
       .populate("sender", "name avatarUrl email")
       .sort({ createdAt: -1 }) // Descending order (newest first)
-      .skip((page - 1) * limit)
+      .skip(skip)
       .limit(limit);
+
+    console.log(`Found ${messages.length} messages, first message createdAt:`, messages[0]?.createdAt);
+    console.log(`Last message createdAt:`, messages[messages.length - 1]?.createdAt);
 
     // Get reactions for all messages
     const messageIds = messages.map((msg) => msg._id);
@@ -94,8 +117,14 @@ const getMessages = async (req, res) => {
       return messageObj;
     });
 
-    const orderedMessages = messagesWithReactions.reverse(); // Oldest first for UI
-    const hasMore = page * limit < total;
+    // Reverse the messages so newest appear at the bottom (chronological order for UI)
+    const orderedMessages = messagesWithReactions.reverse();
+    const hasMore = skip + limit < total;
+    
+    console.log(`Returning ${orderedMessages.length} messages, hasMore: ${hasMore}`);
+    console.log(`First message in response createdAt:`, orderedMessages[0]?.createdAt);
+    console.log(`Last message in response createdAt:`, orderedMessages[orderedMessages.length - 1]?.createdAt);
+    
     res.status(200).json({
       messages: orderedMessages,
       hasMore,
@@ -103,6 +132,7 @@ const getMessages = async (req, res) => {
       total,
     });
   } catch (err) {
+    console.error('Error getting messages:', err);
     res.status(500).json({ message: "Failed to fetch messages" });
   }
 };
@@ -133,8 +163,46 @@ const uploadFile = async (req, res) => {
   }
 };
 
+// Mark all messages in a chat as read by a user
+const markMessagesAsRead = async (req, res) => {
+  const { chatId } = req.body;
+  const userId = req.user._id;
+  
+  console.log(`Marking messages as read for chat ${chatId} by user ${userId}`);
+  
+  try {
+    // Get all messages in the chat that are not read by this user
+    const unreadMessages = await Message.find({ 
+      chat: chatId 
+    }).select('readBy');
+    
+    const messagesToUpdate = unreadMessages.filter(message => 
+      !message.readBy || !message.readBy.includes(userId)
+    );
+    
+    console.log(`Found ${messagesToUpdate.length} unread messages out of ${unreadMessages.length} total messages`);
+    
+    // Update all unread messages
+    if (messagesToUpdate.length > 0) {
+      const messageIds = messagesToUpdate.map(msg => msg._id);
+      const result = await Message.updateMany(
+        { _id: { $in: messageIds } },
+        { $addToSet: { readBy: userId } }
+      );
+      
+      console.log(`Updated ${result.modifiedCount} messages as read`);
+    }
+    
+    res.status(200).json({ success: true, modifiedCount: messagesToUpdate.length });
+  } catch (err) {
+    console.error('Error marking messages as read:', err);
+    res.status(500).json({ message: "Failed to mark messages as read" });
+  }
+};
+
 module.exports = {
   sendMessage,
   getMessages,
   uploadFile,
+  markMessagesAsRead,
 };

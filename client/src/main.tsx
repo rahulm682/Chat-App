@@ -2,23 +2,21 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { CssBaseline } from "@mui/material";
-import { AuthProvider } from "./context/AuthContext";
-import { OnlineUsersProvider } from "./context/OnlineUsersContext";
 import { ThemeProvider } from "./context/ThemeContext";
-import { NotificationProvider } from "./context/NotificationContext";
+import OnlineUsersProvider from "./context/OnlineUsersContext";
 import "./index.css";
+import { Provider } from "react-redux";
+import { store } from "./store";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ThemeProvider>
-      <AuthProvider>
+    <Provider store={store}>
+      <ThemeProvider>
         <OnlineUsersProvider>
-          <NotificationProvider>
-            <CssBaseline />
-            <App />
-          </NotificationProvider>
+          <CssBaseline />
+          <App />
         </OnlineUsersProvider>
-      </AuthProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </Provider>
   </React.StrictMode>
 );

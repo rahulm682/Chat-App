@@ -8,12 +8,14 @@ import {
 } from "@mui/material";
 import { AddReaction as AddReactionIcon } from "@mui/icons-material";
 import type { Reaction, Message } from "../types/auth";
-import { useAuth } from "../context/AuthContext";
-import API from "../api/axios";
+import { useAddReactionMutation, useRemoveReactionMutation } from '../store/services/chatApi';
+import { selectCurrentUser } from "../store/slices/userSlice";
+import { useAppSelector } from "../store/hooks";
 
 interface MessageReactionsProps {
   message: Message;
   onReactionUpdate: (messageId: string, reactions: Reaction[]) => void;
+  refetchMessages?: () => void;
 }
 
 const REACTION_OPTIONS = ["👍", "❤️", "😊", "😮", "😢", "😡"];
@@ -21,10 +23,13 @@ const REACTION_OPTIONS = ["👍", "❤️", "😊", "😮", "😢", "😡"];
 const MessageReactions: React.FC<MessageReactionsProps> = ({
   message,
   onReactionUpdate,
+  refetchMessages,
 }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [loading, setLoading] = useState(false);
-  const { user } = useAuth();
+  const user = useAppSelector(selectCurrentUser);
+  const [addReaction] = useAddReactionMutation();
+  const [removeReaction] = useRemoveReactionMutation();
 
   const reactions = message.reactions || [];
   const userReaction = reactions.find((r) => r.user._id === user?._id);
@@ -40,28 +45,21 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({
 
   const handleReactionClick = async (emoji: string) => {
     if (!user?.token) return;
-
     setLoading(true);
     try {
       if (userReaction?.emoji === emoji) {
         // Remove reaction
-        await API.delete(`/reactions/${message._id}`, {
-          headers: { Authorization: `Bearer ${user.token}` },
-        });
-        
-        const updatedReactions = reactions.filter((r) => !(r.user._id === user._id && r.emoji === emoji));
+        await removeReaction({ messageId: message._id, chatId: message.chat });
+        const updatedReactions = reactions.filter((r) => !(r.user._id === user?._id && r.emoji === emoji));
         onReactionUpdate(message._id, updatedReactions);
+        if (refetchMessages) refetchMessages();
       } else {
         // Add or update reaction
-        const response = await API.post(
-          "/reactions",
-          { messageId: message._id, emoji },
-          { headers: { Authorization: `Bearer ${user.token}` } }
-        );
-        
-        const updatedReactions = reactions.filter((r) => r.user._id !== user._id);
-        updatedReactions.push(response.data);
+        const response = await addReaction({ messageId: message._id, emoji, chatId: message.chat }).unwrap();
+        const updatedReactions = reactions.filter((r) => r.user._id !== user?._id);
+        updatedReactions.push(response);
         onReactionUpdate(message._id, updatedReactions);
+        if (refetchMessages) refetchMessages();
       }
     } catch (error) {
       console.error("Error handling reaction:", error);

@@ -17,6 +17,7 @@ export const connectSocket = (token: string) => {
   });
 
   socket.on("connect", () => {
+    // Request current online users when socket connects
     socket.emit("get-online-users");
   });
 
@@ -27,6 +28,9 @@ export const connectSocket = (token: string) => {
   });
 
   socket.on("error", (error) => {
+  });
+
+  socket.on("message-received", (message: any) => {
   });
 
   // Set up online users listener immediately
@@ -60,6 +64,7 @@ export const onUserOnline = (callback: (users: string[]) => void) => {
 
 export const getSocket = () => {
   if (!socket) {
+    return null;
   }
 
   return socket;

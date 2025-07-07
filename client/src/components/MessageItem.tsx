@@ -2,16 +2,17 @@ import React from "react";
 import { Box, Typography, Avatar, Tooltip } from "@mui/material";
 import MessageReactions from "./MessageReactions";
 import MessageStatus from "./MessageStatus";
-import type { Message, Reaction } from "../types/auth";
+import type { ApiMessage, ApiReaction } from '../store/services/chatApi';
 import { formatTimestamp, formatTimeOnly } from "../utils/timestamp";
 
 interface MessageItemProps {
-  message: Message;
+  message: ApiMessage;
   isOwnMessage: boolean;
-  onReactionUpdate: (messageId: string, reactions: Reaction[]) => void;
+  onReactionUpdate: (messageId: string, reactions: ApiReaction[]) => void;
+  refetchMessages?: () => void;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message, isOwnMessage, onReactionUpdate }) => {
+const MessageItem: React.FC<MessageItemProps> = ({ message, isOwnMessage, onReactionUpdate, refetchMessages }) => {
   return (
     <Box
       sx={{
@@ -83,7 +84,7 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isOwnMessage, onReac
         </Box>
         
         {/* Message Reactions */}
-        <MessageReactions message={message} onReactionUpdate={onReactionUpdate} />
+        <MessageReactions message={message} onReactionUpdate={onReactionUpdate} refetchMessages={refetchMessages} />
       </Box>
     </Box>
   );

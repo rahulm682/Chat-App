@@ -115,6 +115,129 @@ const removeFromGroup = async (req, res) => {
   res.json(removed);
 };
 
+// Get all chats for the user, including unread count for each chat
+const getChats = async (req, res) => {
+  const userId = req.user._id;
+  try {
+    const chats = await Chat.find({ participants: userId })
+      .populate("participants", "name avatarUrl email")
+      .populate({
+        path: "latestMessage",
+        populate: { path: "sender", select: "name avatarUrl email" },
+      })
+      .sort({ updatedAt: -1 });
+
+    // For each chat, count unread messages for the user
+    const chatIds = chats.map(chat => chat._id);
+    const Message = require('../models/Message');
+    
+    console.log(`Calculating unread counts for user ${userId} in chats:`, chatIds);
+    
+    // Use a simpler approach: get all messages and filter in JavaScript
+    const allMessages = await Message.find({ chat: { $in: chatIds } }).select('chat readBy');
+    console.log(`Found ${allMessages.length} total messages across all chats`);
+    
+    // Group messages by chat and count unread ones
+    const unreadCountMap = {};
+    chatIds.forEach(chatId => {
+      unreadCountMap[chatId.toString()] = 0;
+    });
+    
+    allMessages.forEach(message => {
+      const chatId = message.chat.toString();
+      const isRead = message.readBy && message.readBy.includes(userId);
+      if (!isRead) {
+        unreadCountMap[chatId] = (unreadCountMap[chatId] || 0) + 1;
+      }
+    });
+    
+    console.log('Unread counts calculated:', unreadCountMap);
+
+    // Attach unreadCount to each chat
+    const chatsWithUnread = chats.map(chat => {
+      const unreadCount = unreadCountMap[chat._id.toString()] || 0;
+      console.log(`Chat ${chat._id}: unreadCount = ${unreadCount}`);
+      return {
+        ...chat.toObject(),
+        unreadCount
+      };
+    });
+
+    res.json(chatsWithUnread);
+  } catch (err) {
+    console.error('Error in getChats:', err);
+    res.status(500).json({ message: "Failed to fetch chats" });
+  }
+};
+
+// Debug endpoint to check unread counts
+const debugUnreadCount = async (req, res) => {
+  const { chatId } = req.params;
+  const userId = req.user._id;
+  
+  try {
+    const Message = require('../models/Message');
+    
+    // Get all messages in the chat
+    const allMessages = await Message.find({ chat: chatId }).select('sender readBy');
+    console.log(`All messages in chat ${chatId}:`, allMessages);
+    
+    // Count unread messages using the same logic as getChats
+    const unreadMessages = allMessages.filter(message => 
+      !message.readBy || !message.readBy.includes(userId)
+    );
+    
+    const unreadCount = unreadMessages.length;
+    
+    res.json({
+      chatId,
+      userId,
+      totalMessages: allMessages.length,
+      unreadCount,
+      messages: allMessages,
+      unreadMessages: unreadMessages
+    });
+  } catch (err) {
+    console.error('Error in debugUnreadCount:', err);
+    res.status(500).json({ message: "Failed to debug unread count" });
+  }
+};
+
+// Test endpoint to verify unread count logic
+const testUnreadCount = async (req, res) => {
+  const userId = req.user._id;
+  
+  try {
+    const Message = require('../models/Message');
+    
+    // Get a sample message to test the logic
+    const sampleMessage = await Message.findOne().select('readBy');
+    console.log('Sample message readBy field:', sampleMessage?.readBy);
+    
+    // Test the includes logic
+    const isRead = sampleMessage?.readBy && sampleMessage.readBy.includes(userId);
+    console.log(`Is message read by user ${userId}:`, isRead);
+    
+    // Test with a non-existent user ID
+    const fakeUserId = '507f1f77bcf86cd799439011';
+    const isReadByFakeUser = sampleMessage?.readBy && sampleMessage.readBy.includes(fakeUserId);
+    console.log(`Is message read by fake user ${fakeUserId}:`, isReadByFakeUser);
+    
+    res.json({
+      userId,
+      sampleMessage: sampleMessage ? {
+        id: sampleMessage._id,
+        readBy: sampleMessage.readBy,
+        isReadByCurrentUser: isRead,
+        isReadByFakeUser: isReadByFakeUser
+      } : null
+    });
+  } catch (err) {
+    console.error('Error in testUnreadCount:', err);
+    res.status(500).json({ message: "Failed to test unread count" });
+  }
+};
+
 module.exports = {
   accessChat,
   fetchChats,
@@ -122,4 +245,7 @@ module.exports = {
   renameGroup,
   addToGroup,
   removeFromGroup,
+  getChats,
+  debugUnreadCount,
+  testUnreadCount,
 };
