@@ -17,12 +17,6 @@ A real-time chat application built with React, Node.js, Socket.IO, and MongoDB.
 - Date separators in message list
 - Context-based state (theme, online users)
 - Redux Toolkit state (chats, messages, users, online users)
-- **Performance optimizations:**
-  - Memoized components (`React.memo`, `useMemo`)
-  - Virtualized message list with `react-window` (`VariableSizeList`)
-  - Infinite scroll for loading older messages
-  - Accurate row height calculation for dynamic content
-  - Optimistic UI for reactions (instant feedback)
 
 ### 🚧 Not Yet Implemented / Partial
 - File uploads (Cloudinary backend ready, no UI/attachment support)

@@ -15,10 +15,20 @@ const errorHandler = require("./middleware/errorHandler");
 
 dotenv.config();
 
+// Define allowed origins
+const allowedOrigins = [
+  process.env.CLIENT_URL,
+  "https://chat-app-koqz.vercel.app",
+  "http://localhost:5173", // local development URL
+];
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: process.env.CLIENT_URL, credentials: true },
+  cors: { 
+    origin: allowedOrigins,
+    credentials: true 
+  },
 });
 
 app.set("io", io);
@@ -37,8 +47,8 @@ mongoose
 
 app.use(
   cors({
-    origin: "http://localhost:5173", // or your deployed frontend URL
-    credentials: true, // allow cookies/auth headers if needed
+    origin: allowedOrigins,
+    credentials: true,
   })
 );
 app.use(express.json());

@@ -3,23 +3,17 @@ import SendIcon from "@mui/icons-material/Send";
 import { useState } from "react";
 import { useRef } from "react";
 import { getSocket } from "../socket/socket";
-import type { Message } from "../types/auth";
 import { useSendMessageMutation } from '../store/services/chatApi';
-import { useAppSelector } from '../store/hooks';
-import { selectCurrentUser } from '../store/slices/userSlice';
 
 const MessageInput = ({
   chatId,
-  onNewMessage,
 }: {
   chatId: string;
-  onNewMessage: (msg: Message) => void;
 }) => {
   const [text, setText] = useState("");
   const socket = getSocket();
   const typingTimeout = useRef<number | null>(null);
   const [sendMessage] = useSendMessageMutation();
-  const user = useAppSelector(selectCurrentUser);
 
   const handleSend = async () => {
     if (!text.trim()) return;
