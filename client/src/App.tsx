@@ -12,6 +12,7 @@ import { selectCurrentUser, setUser } from './store/slices/userSlice';
 import { connectSocket } from './socket/socket';
 
 const App = () => {
+  console.log('VITE_API_URL in App:', import.meta.env.VITE_API_URL);
   const { isDark } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const dispatch = useAppDispatch();

@@ -45,6 +45,7 @@ export const chatApi = createApi({
       const user = (getState() as RootState).user.user;
       const token = user?.token;
       if (token) headers.set('authorization', `Bearer ${token}`);
+      console.log('Using baseUrl:', import.meta.env.VITE_API_URL);
       return headers;
     },
   }),
