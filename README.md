@@ -7,7 +7,7 @@ A real-time chat application built with React, Node.js, Socket.IO, and MongoDB.
 ### ✅ Implemented
 - User authentication & registration (JWT-based)
 - Real-time messaging (Socket.IO)
-- Message reactions (add/update/remove, real-time sync)
+- Message reactions (add/update/remove, real-time sync, optimistic UI)
 - Typing indicators
 - Online/offline user status
 - Dark/light theme toggle
@@ -17,6 +17,12 @@ A real-time chat application built with React, Node.js, Socket.IO, and MongoDB.
 - Date separators in message list
 - Context-based state (theme, online users)
 - Redux Toolkit state (chats, messages, users, online users)
+- **Performance optimizations:**
+  - Memoized components (`React.memo`, `useMemo`)
+  - Virtualized message list with `react-window` (`VariableSizeList`)
+  - Infinite scroll for loading older messages
+  - Accurate row height calculation for dynamic content
+  - Optimistic UI for reactions (instant feedback)
 
 ### 🚧 Not Yet Implemented / Partial
 - File uploads (Cloudinary backend ready, no UI/attachment support)
@@ -29,6 +35,14 @@ A real-time chat application built with React, Node.js, Socket.IO, and MongoDB.
 - Chat settings/management (no UI)
 - Media previews (no image/video preview in chat)
 - Message pagination/infinite scroll (basic pagination only)
+
+## Performance Optimizations
+
+- **Virtualized message list:** Only visible messages are rendered, enabling smooth performance even with thousands of messages.
+- **Infinite scroll:** Older messages are loaded as you scroll up, with seamless pagination.
+- **Memoization:** Components like messages, reactions, and chat list items are memoized to prevent unnecessary re-renders.
+- **Optimistic UI:** Reactions update instantly in the UI before server confirmation, then sync with the backend.
+- **Dynamic row height:** Message rows adjust their height based on content, reactions, and date separators, preventing overlap and layout issues.
 
 ## Tech Stack
 
