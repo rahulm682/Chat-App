@@ -78,16 +78,26 @@ const MessageItem: React.FC<MessageItemProps> = ({ message, isOwnMessage, onReac
             <MessageStatus 
               status="read" 
               timestamp={formatTimeOnly(message.createdAt)}
-              isRead={message.isRead || false}
+              isRead={('isRead' in message) ? (message as any).isRead : false}
             />
           )}
         </Box>
         
         {/* Message Reactions */}
-        <MessageReactions message={message} onReactionUpdate={onReactionUpdate} refetchMessages={refetchMessages} />
+        <MessageReactions message={message as any} onReactionUpdate={onReactionUpdate} refetchMessages={refetchMessages} />
       </Box>
     </Box>
   );
 };
 
-export default MessageItem;
+// Custom comparison: only re-render if message._id, content, reactions, or isOwnMessage change
+function areEqual(prevProps: MessageItemProps, nextProps: MessageItemProps) {
+  return (
+    prevProps.message._id === nextProps.message._id &&
+    prevProps.message.content === nextProps.message.content &&
+    JSON.stringify(prevProps.message.reactions) === JSON.stringify(nextProps.message.reactions) &&
+    prevProps.isOwnMessage === nextProps.isOwnMessage
+  );
+}
+
+export default React.memo(MessageItem, areEqual);

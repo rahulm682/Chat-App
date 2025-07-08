@@ -137,15 +137,23 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
         }
         secondary={
           chat.latestMessage ? (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              noWrap
-              sx={{ maxWidth: "100%" }}
-              component="span"
-            >
-              {formatMessagePreview(chat.latestMessage)}
-            </Typography>
+            <Tooltip title={chat.latestMessage.content}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                noWrap
+                sx={{
+                  maxWidth: "100%",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  display: "block",
+                }}
+                component="span"
+              >
+                {formatMessagePreview(chat.latestMessage)}
+              </Typography>
+            </Tooltip>
           ) : (
             <Typography variant="body2" color="text.secondary">
               No messages yet
@@ -157,4 +165,14 @@ const ChatListItem: React.FC<ChatListItemProps> = ({
   );
 };
 
-export default ChatListItem; 
+// Custom comparison: only re-render if chat._id, isSelected, unreadCount, or latestMessage change
+function areEqual(prevProps: ChatListItemProps, nextProps: ChatListItemProps) {
+  return (
+    prevProps.chat._id === nextProps.chat._id &&
+    prevProps.isSelected === nextProps.isSelected &&
+    prevProps.unreadCount === nextProps.unreadCount &&
+    JSON.stringify(prevProps.chat.latestMessage) === JSON.stringify(nextProps.chat.latestMessage)
+  );
+}
+
+export default React.memo(ChatListItem, areEqual); 

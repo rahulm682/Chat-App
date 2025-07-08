@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Box,
   IconButton,
@@ -34,14 +34,16 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({
   const reactions = message.reactions || [];
   const userReaction = reactions.find((r) => r.user._id === user?._id);
 
-  // Group reactions by emoji
-  const reactionGroups = reactions.reduce((acc, reaction) => {
-    if (!acc[reaction.emoji]) {
-      acc[reaction.emoji] = [];
-    }
-    acc[reaction.emoji].push(reaction);
-    return acc;
-  }, {} as Record<string, Reaction[]>);
+  // Group reactions by emoji (memoized)
+  const reactionGroups = useMemo(() => {
+    return reactions.reduce((acc, reaction) => {
+      if (!acc[reaction.emoji]) {
+        acc[reaction.emoji] = [];
+      }
+      acc[reaction.emoji].push(reaction);
+      return acc;
+    }, {} as Record<string, Reaction[]>);
+  }, [reactions]);
 
   const handleReactionClick = async (emoji: string) => {
     if (!user?.token) return;
@@ -160,4 +162,14 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({
   );
 };
 
-export default MessageReactions; 
+// Custom comparison: only re-render if message._id, message.reactions, or user._id change
+function areEqual(prevProps: MessageReactionsProps, nextProps: MessageReactionsProps) {
+  return (
+    prevProps.message._id === nextProps.message._id &&
+    JSON.stringify(prevProps.message.reactions) === JSON.stringify(nextProps.message.reactions) &&
+    prevProps.onReactionUpdate === nextProps.onReactionUpdate &&
+    prevProps.refetchMessages === nextProps.refetchMessages
+  );
+}
+
+export default React.memo(MessageReactions, areEqual); 

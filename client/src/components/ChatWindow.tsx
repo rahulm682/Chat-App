@@ -31,6 +31,7 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [isNewMessage, setIsNewMessage] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
 
   const { data, refetch, isFetching } = useGetMessagesQuery(
     { chatId: selectedChatId ?? "", page, limit: 15 },
@@ -72,44 +73,42 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
 
   // Load messages when chat or page changes
   useEffect(() => {
-    if (data && page === 1) {
-      setMessages(data.messages);
+    if (data) {
+      if (page === 1) {
+        setMessages(data.messages);
+      } else {
+        setMessages((prev) => {
+          // Create a map of existing messages for quick lookup
+          const existingMessages = new Map(prev.map(msg => [msg._id, msg]));
+          // Add new messages from the server, avoiding duplicates
+          const newMessages = data.messages.filter(msg => !existingMessages.has(msg._id));
+          // For pagination, older messages should be added to the beginning
+          // since we're scrolling up to see older messages
+          const result = [...newMessages, ...prev];
+          return result;
+        });
+      }
       setHasMore(data.hasMore);
-    } else if (data && page > 1) {
-      setMessages((prev) => {
-        // Create a map of existing messages for quick lookup
-        const existingMessages = new Map(prev.map(msg => [msg._id, msg]));
-        
-        // Add new messages from the server, avoiding duplicates
-        const newMessages = data.messages.filter(msg => !existingMessages.has(msg._id));
-        
-        // For pagination, older messages should be added to the beginning
-        // since we're scrolling up to see older messages
-        const result = [...newMessages, ...prev];
-        return result;
-      });
-      setHasMore(data.hasMore);
+      setLoadingInitial(false);
     }
   }, [data, page]);
 
   // Reset messages when chat changes
   useEffect(() => {
     setPage(1);
-    setMessages([]);
     setHasMore(true);
     setIsNewMessage(false);
+    setLoadingInitial(true);
   }, [selectedChatId]);
 
-  // Infinite scroll handler
-  const handleScroll = useCallback(() => {
-    const container = messageListRef.current;
-    if (!container || loadingMore || !hasMore || isFetching) return;
-    if (container.scrollTop === 0) {
+  // Infinite scroll handler for react-window
+  const handleLoadMoreMessages = useCallback(() => {
+    if (!loadingMore && hasMore && !isFetching) {
       setLoadingMore(true);
       setPage((prev) => prev + 1);
       setTimeout(() => setLoadingMore(false), 500); // Simulate loading
     }
-  }, [loadingMore, hasMore, isFetching]);
+  }, [loadingMore, hasMore, isFetching, page]);
 
   // Add this function inside ChatWindow
   const handleReactionUpdate = useCallback((messageId: string, reactions: Reaction[]) => {
@@ -140,21 +139,18 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
 
     const handleMessageReceived = (msg: ApiMessage) => {
       if (msg.chat._id === currentChatRef.current?._id) {
-        // Add the new message directly to the state instead of refetching
         setMessages((prev) => {
-          // Check if message already exists to avoid duplicates
-          const messageExists = prev.some(existingMsg => existingMsg._id === msg._id);
-          if (messageExists) {
-            return prev;
+          // If the message already exists, update it; otherwise, add it
+          const exists = prev.some(existingMsg => existingMsg._id === msg._id);
+          if (exists) {
+            return prev.map(existingMsg =>
+              existingMsg._id === msg._id ? { ...existingMsg, ...msg } : existingMsg
+            );
+          } else {
+            return [...prev, msg];
           }
-          
-          // Add new message to the end (since it's the newest)
-          return [...prev, msg];
         });
         setIsNewMessage(true);
-        
-        // If the message is from another user and we're actively viewing this chat,
-        // mark it as read immediately
         if (msg.sender._id !== user?._id) {
           markMessagesAsRead({ chatId: msg.chat._id });
         }
@@ -175,13 +171,34 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
     socket.on(
       "reaction-added",
       (data: { messageId: string; reaction: Reaction }) => {
-        refetchMessages();
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === data.messageId
+              ? {
+                  ...msg,
+                  reactions: [
+                    ...(msg.reactions || []).filter(r => r.user._id !== data.reaction.user._id),
+                    data.reaction,
+                  ],
+                }
+              : msg
+          )
+        );
       }
     );
     socket.on(
       "reaction-removed",
       (data: { messageId: string; userId: string }) => {
-        refetchMessages();
+        setMessages((prevMessages) =>
+          prevMessages.map((msg) =>
+            msg._id === data.messageId
+              ? {
+                  ...msg,
+                  reactions: (msg.reactions || []).filter(r => r.user._id !== data.userId),
+                }
+              : msg
+          )
+        );
       }
     );
 
@@ -192,10 +209,10 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
       socket.off("reaction-added");
       socket.off("reaction-removed");
     };
-  }, [chat, user, markMessagesAsRead, refetchMessages]);
+  }, [chat, user, markMessagesAsRead]);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", height: "100vh" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {!chat ? (
         <WelcomeScreen />
       ) : (
@@ -216,11 +233,10 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
           {/* Message List - Flexible */}
           <Box
             ref={messageListRef}
-            onScroll={handleScroll}
             sx={{
               flex: 1,
               minHeight: 0,
-              maxHeight: "65vh",
+              maxHeight: "100%",
               display: "flex",
               flexDirection: "column",
               overflowY: "auto",
@@ -244,10 +260,11 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
               ref={messageListRef}
               messages={messages}
               chatId={chat._id}
-              loading={isFetching && page === 1}
+              loading={loadingInitial}
               isNewMessage={isNewMessage}
               onReactionUpdate={handleReactionUpdate}
               refetchMessages={refetchMessages}
+              onLoadMore={handleLoadMoreMessages}
             />
           </Box>
 
@@ -257,10 +274,6 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
           <Box sx={{ pt: 1, display: "flex", alignItems: "center" }}>
             <MessageInput
               chatId={chat._id}
-              onNewMessage={(msg: Message) => {
-                // const messageWithReactions = { ...msg, reactions: [] };
-                // setMessages((prev) => [...prev, messageWithReactions]);
-              }}
             />
           </Box>
         </Box>

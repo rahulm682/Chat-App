@@ -99,6 +99,48 @@ export const chatApi = createApi({
       invalidatesTags: (result, error, { chatId }) => [
         { type: 'Messages', id: `Chat-${chatId}` }
       ],
+      async onQueryStarted({ messageId, emoji, chatId }, { dispatch, getState, queryFulfilled }) {
+        // Get current user info from Redux state
+        const state = getState() as RootState;
+        const user = state.user.user;
+        const userId = user?._id || 'optimistic';
+        const userName = user?.name || 'You';
+        const userEmail = user?.email || '';
+        // Optimistically update the cache
+        const patchResult = dispatch(
+          chatApi.util.updateQueryData('getMessages', { chatId, page: 1, limit: 15 }, draft => {
+            const msg = draft.messages.find(m => m._id === messageId);
+            if (msg) {
+              // Remove any previous reaction by this user
+              msg.reactions = (msg.reactions || []).filter(r => r.user._id !== userId);
+              // Add the optimistic reaction
+              msg.reactions.push({
+                _id: 'optimistic',
+                message: messageId,
+                user: { _id: userId, name: userName, email: userEmail, token: '' },
+                emoji,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+              });
+            }
+          })
+        );
+        try {
+          const { data: newReaction } = await queryFulfilled;
+          // Optionally update with actual server response
+          dispatch(
+            chatApi.util.updateQueryData('getMessages', { chatId, page: 1, limit: 15 }, draft => {
+              const msg = draft.messages.find(m => m._id === messageId);
+              if (msg) {
+                msg.reactions = (msg.reactions || []).filter(r => r.user._id !== newReaction.user._id);
+                msg.reactions.push(newReaction);
+              }
+            })
+          );
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     removeReaction: builder.mutation<any, { messageId: string, chatId: string }>({
       query: ({ messageId }) => ({
@@ -108,6 +150,27 @@ export const chatApi = createApi({
       invalidatesTags: (result, error, { chatId }) => [
         { type: 'Messages', id: `Chat-${chatId}` }
       ],
+      async onQueryStarted({ messageId, chatId }, { dispatch, getState, queryFulfilled }) {
+        // Get current user info from Redux state
+        const state = getState() as RootState;
+        const user = state.user.user;
+        const userId = user?._id || 'optimistic';
+        // Optimistically update the cache
+        const patchResult = dispatch(
+          chatApi.util.updateQueryData('getMessages', { chatId, page: 1, limit: 15 }, draft => {
+            const msg = draft.messages.find(m => m._id === messageId);
+            if (msg) {
+              // Remove the current user's reaction (optimistically)
+              msg.reactions = (msg.reactions || []).filter(r => r.user._id !== userId);
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
     }),
     login: builder.mutation<any, { email: string, password: string }>({
       query: (body) => ({
