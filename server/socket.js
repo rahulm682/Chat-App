@@ -67,7 +67,6 @@ const setupSocket = (io) => {
           usersViewingChats.set(userId, new Set());
         }
         usersViewingChats.get(userId).add(chatId);
-        console.log(`User ${userId} is now viewing chat ${chatId}`);
       }
     });
 
@@ -131,18 +130,13 @@ const autoMarkMessagesAsRead = async (chatId, messageId) => {
       }
     });
 
-    console.log(`Chat ${chatId} participants:`, allParticipants);
-    console.log(`Users viewing this chat:`, usersToMarkAsRead);
-    console.log(`All users viewing chats:`, Array.from(usersViewingChats.entries()));
-
     // Update the message to mark it as read for these users
     if (usersToMarkAsRead.length > 0) {
       await Message.findByIdAndUpdate(messageId, {
         $addToSet: { readBy: { $each: usersToMarkAsRead } }
       });
-      console.log(`Auto-marked message ${messageId} as read for users:`, usersToMarkAsRead);
     } else {
-      console.log(`No users are viewing chat ${chatId}, message will remain unread`);
+      // no users are viewing this chat, so we don't need to mark the message as read
     }
   } catch (error) {
     console.error("Error auto-marking message as read:", error);

@@ -2,13 +2,13 @@ import React from "react";
 import { Box, Typography, Avatar, Tooltip } from "@mui/material";
 import MessageReactions from "./MessageReactions";
 import MessageStatus from "./MessageStatus";
-import type { ApiMessage, ApiReaction } from '../store/services/chatApi';
 import { formatTimestamp, formatTimeOnly } from "../utils/timestamp";
+import type { IMessage, IReaction } from "../types/api";
 
 interface MessageItemProps {
-  message: ApiMessage;
+  message: IMessage;
   isOwnMessage: boolean;
-  onReactionUpdate: (messageId: string, reactions: ApiReaction[]) => void;
+  onReactionUpdate: (messageId: string, reactions: IReaction[]) => void;
   refetchMessages?: () => void;
 }
 

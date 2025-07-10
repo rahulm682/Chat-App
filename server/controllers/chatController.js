@@ -131,11 +131,8 @@ const getChats = async (req, res) => {
     const chatIds = chats.map(chat => chat._id);
     const Message = require('../models/Message');
     
-    console.log(`Calculating unread counts for user ${userId} in chats:`, chatIds);
-    
     // Use a simpler approach: get all messages and filter in JavaScript
     const allMessages = await Message.find({ chat: { $in: chatIds } }).select('chat readBy');
-    console.log(`Found ${allMessages.length} total messages across all chats`);
     
     // Group messages by chat and count unread ones
     const unreadCountMap = {};
@@ -150,13 +147,10 @@ const getChats = async (req, res) => {
         unreadCountMap[chatId] = (unreadCountMap[chatId] || 0) + 1;
       }
     });
-    
-    console.log('Unread counts calculated:', unreadCountMap);
 
     // Attach unreadCount to each chat
     const chatsWithUnread = chats.map(chat => {
       const unreadCount = unreadCountMap[chat._id.toString()] || 0;
-      console.log(`Chat ${chat._id}: unreadCount = ${unreadCount}`);
       return {
         ...chat.toObject(),
         unreadCount
@@ -180,7 +174,6 @@ const debugUnreadCount = async (req, res) => {
     
     // Get all messages in the chat
     const allMessages = await Message.find({ chat: chatId }).select('sender readBy');
-    console.log(`All messages in chat ${chatId}:`, allMessages);
     
     // Count unread messages using the same logic as getChats
     const unreadMessages = allMessages.filter(message => 
@@ -212,16 +205,13 @@ const testUnreadCount = async (req, res) => {
     
     // Get a sample message to test the logic
     const sampleMessage = await Message.findOne().select('readBy');
-    console.log('Sample message readBy field:', sampleMessage?.readBy);
     
     // Test the includes logic
     const isRead = sampleMessage?.readBy && sampleMessage.readBy.includes(userId);
-    console.log(`Is message read by user ${userId}:`, isRead);
     
     // Test with a non-existent user ID
     const fakeUserId = '507f1f77bcf86cd799439011';
     const isReadByFakeUser = sampleMessage?.readBy && sampleMessage.readBy.includes(fakeUserId);
-    console.log(`Is message read by fake user ${fakeUserId}:`, isReadByFakeUser);
     
     res.json({
       userId,

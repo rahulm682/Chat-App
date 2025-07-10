@@ -1,41 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RootState } from '../index';
-
-// Types for API responses
-export interface ApiUser {
-  _id: string;
-  name: string;
-  email: string;
-  avatarUrl?: string;
-}
-
-export interface ApiReaction {
-  _id: string;
-  message: string;
-  user: ApiUser;
-  emoji: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ApiMessage {
-  _id: string;
-  sender: ApiUser;
-  content: string;
-  chat: string;
-  type: string;
-  createdAt: string;
-  updatedAt: string;
-  reactions: ApiReaction[];
-  readBy: string[];
-}
-
-export interface GetMessagesResponse {
-  messages: ApiMessage[];
-  hasMore: boolean;
-  page: number;
-  total: number;
-}
+import type { IBaseUser, IChat, IMessage, IReaction } from '../../types/api';
 
 export const chatApi = createApi({
   reducerPath: 'chatApi',
@@ -45,17 +10,16 @@ export const chatApi = createApi({
       const user = (getState() as RootState).user.user;
       const token = user?.token;
       if (token) headers.set('authorization', `Bearer ${token}`);
-      console.log('Using baseUrl:', import.meta.env.VITE_API_URL);
       return headers;
     },
   }),
   tagTypes: ['Chats', 'Messages'] as const,
   endpoints: (builder) => ({
-    getChats: builder.query<any[], void>({
+    getChats: builder.query<IChat[], void>({
       query: () => '/chats',
       providesTags: [{ type: 'Chats', id: 'LIST' }],
     }),
-    getMessages: builder.query<GetMessagesResponse, { chatId: string; page?: number; limit?: number }>({
+    getMessages: builder.query<{messages: IMessage[], hasMore: boolean, page: number, total: number}, { chatId: string; page?: number; limit?: number }>({
       query: ({ chatId, page = 1, limit = 15 }) => `/messages/${chatId}?page=${page}&limit=${limit}`,
       providesTags: (result, error, { chatId }) => 
         result 
@@ -65,7 +29,7 @@ export const chatApi = createApi({
             ]
           : [{ type: 'Messages' as const, id: `Chat-${chatId}` }],
     }),
-    markMessagesAsRead: builder.mutation<any, { chatId: string }>({
+    markMessagesAsRead: builder.mutation<{success: boolean, modifiedCount: number}, { chatId: string }>({
       query: ({ chatId }) => ({
         url: '/messages/mark-read',
         method: 'POST',
@@ -76,7 +40,7 @@ export const chatApi = createApi({
         { type: 'Messages' as const, id: `Chat-${chatId}` }
       ],
     }),
-    sendMessage: builder.mutation<any, { chatId: string, content: string }>({
+    sendMessage: builder.mutation<{data: IMessage}, { chatId: string, content: string }>({
       query: ({ chatId, content }) => ({
         url: '/messages',
         method: 'POST',
@@ -91,7 +55,7 @@ export const chatApi = createApi({
       queryFn: () => ({ data: undefined }),
       invalidatesTags: [{ type: 'Chats' as const, id: 'LIST' }],
     }),
-    addReaction: builder.mutation<any, { messageId: string, emoji: string, chatId: string }>({
+    addReaction: builder.mutation<IReaction, { messageId: string, emoji: string, chatId: string }>({
       query: ({ messageId, emoji }) => ({
         url: '/reactions',
         method: 'POST',
@@ -143,7 +107,7 @@ export const chatApi = createApi({
         }
       },
     }),
-    removeReaction: builder.mutation<any, { messageId: string, chatId: string }>({
+    removeReaction: builder.mutation<{data: {message: string}}, { messageId: string, chatId: string }>({
       query: ({ messageId }) => ({
         url: `/reactions/${messageId}`,
         method: 'DELETE',
@@ -173,24 +137,24 @@ export const chatApi = createApi({
         }
       },
     }),
-    login: builder.mutation<any, { email: string, password: string }>({
+    login: builder.mutation<IBaseUser, { email: string, password: string }>({
       query: (body) => ({
         url: '/users/login',
         method: 'POST',
         body,
       }),
     }),
-    register: builder.mutation<any, { name: string, email: string, password: string }>({
+    register: builder.mutation<IBaseUser, { name: string, email: string, password: string }>({
       query: (body) => ({
         url: '/users/register',
         method: 'POST',
         body,
       }),
     }),
-    searchUsers: builder.query<any[], string>({
+    searchUsers: builder.query<IBaseUser[], string>({
       query: (search) => `/users?search=${encodeURIComponent(search)}`,
     }),
-    createChat: builder.mutation<any, { userId: string }>({
+    createChat: builder.mutation<IChat, { userId: string }>({
       query: ({ userId }) => ({
         url: '/chats',
         method: 'POST',

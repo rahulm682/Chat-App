@@ -19,7 +19,7 @@ const MessageInput = ({
     if (!text.trim()) return;
     
     try {
-      await sendMessage({ chatId, content: text });
+      const response = await sendMessage({ chatId, content: text });
       setText("");
     } catch (error) {
     }
