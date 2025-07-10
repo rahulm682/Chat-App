@@ -5,13 +5,12 @@ import ChatHeader from "./ChatHeader";
 import WelcomeScreen from "./WelcomeScreen";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { getSocket } from "../socket/socket";
-import type { User, Message, Reaction } from "../types/auth";
+import type { IBaseUser, IMessage, IReaction } from "../types/api";
 import TypingIndicator from "./TypingIndicator";
 import { useOnlineUsers } from "../context/OnlineUsersContext";
 import {
   useGetMessagesQuery,
   useMarkMessagesAsReadMutation,
-  type ApiMessage,
 } from "../store/services/chatApi";
 import { useAppSelector } from "../store/hooks";
 import { selectCurrentUser } from "../store/slices/userSlice";
@@ -19,13 +18,13 @@ import { selectCurrentUser } from "../store/slices/userSlice";
 interface Chat {
   _id: string;
   chatName?: string;
-  participants: User[];
+  participants: IBaseUser[];
 }
 
 const ChatWindow = ({ chat }: { chat: Chat | null }) => {
   const selectedChatId = useAppSelector((state) => state.chat.selectedChatId);
   const user = useAppSelector(selectCurrentUser);
-  const [messages, setMessages] = useState<ApiMessage[]>([]);
+  const [messages, setMessages] = useState<IMessage[]>([]);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -37,6 +36,7 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
     { chatId: selectedChatId ?? "", page, limit: 15 },
     { skip: !selectedChatId }
   );
+  
   const [markMessagesAsRead] = useMarkMessagesAsReadMutation();
 
   // Robustly find the other user
@@ -67,6 +67,7 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
         .then(() => {
         })
         .catch((error) => {
+          console.log("error", error);
         });
     }
   }, [selectedChatId, user, markMessagesAsRead]);
@@ -111,7 +112,7 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
   }, [loadingMore, hasMore, isFetching, page]);
 
   // Add this function inside ChatWindow
-  const handleReactionUpdate = useCallback((messageId: string, reactions: Reaction[]) => {
+  const handleReactionUpdate = useCallback((messageId: string, reactions: IReaction[]) => {
     setMessages((prevMessages) =>
       prevMessages.map((msg) =>
         msg._id === messageId ? { ...msg, reactions } : msg
@@ -137,7 +138,7 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
     // Notify server that user is actively viewing this chat
     socket.emit("user-viewing-chat", { chatId: chat._id, userId: user?._id });
 
-    const handleMessageReceived = (msg: ApiMessage) => {
+    const handleMessageReceived = (msg: IMessage) => {
       if (msg.chat._id === currentChatRef.current?._id) {
         setMessages((prev) => {
           // If the message already exists, update it; otherwise, add it
@@ -170,7 +171,7 @@ const ChatWindow = ({ chat }: { chat: Chat | null }) => {
     socket.on("stop-typing", handleStopTyping);
     socket.on(
       "reaction-added",
-      (data: { messageId: string; reaction: Reaction }) => {
+      (data: { messageId: string; reaction: IReaction }) => {
         setMessages((prevMessages) =>
           prevMessages.map((msg) =>
             msg._id === data.messageId

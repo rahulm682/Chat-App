@@ -2,19 +2,19 @@ import React, { useEffect, useRef } from "react";
 import { Box, Typography } from "@mui/material";
 import MessageItem from "./MessageItem";
 import DateSeparator from "./DateSeparator";
-import type { ApiMessage, ApiReaction } from "../store/services/chatApi";
 import { isSameDay } from "../utils/timestamp";
 import { useAppSelector } from "../store/hooks";
 import { selectCurrentUser } from "../store/slices/userSlice";
 import { VariableSizeList } from 'react-window';
+import type { IMessage, IReaction } from "../types/api";
 
 interface MessageListProps {
-  messages: ApiMessage[];
+  messages: IMessage[];
   chatId: string;
   loading: boolean;
   isNewMessage?: boolean; // Flag to indicate if this is a new real-time message
   containerRef?: React.Ref<HTMLDivElement>;
-  onReactionUpdate: (messageId: string, reactions: ApiReaction[]) => void;
+  onReactionUpdate: (messageId: string, reactions: IReaction[]) => void;
   refetchMessages?: () => void;
   onLoadMore: () => void;
   [key: string]: any; // for extra props like data-message-list-container
@@ -27,7 +27,7 @@ const TIMESTAMP_HEIGHT = 20;
 const CHAR_PER_LINE = 40;
 const LINE_HEIGHT = 22;
 
-function getItemSize(index: number, messages: ApiMessage[]): number {
+function getItemSize(index: number, messages: IMessage[]): number {
   const msg = messages[index];
   if (!msg) return BASE_PADDING + LINE_HEIGHT;
 
@@ -91,7 +91,7 @@ const MessageList = React.forwardRef<HTMLDivElement, MessageListProps>(({
 
   // Row renderer for react-window
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
-    const msg = messages[index] as ApiMessage;
+    const msg = messages[index] as IMessage;
     const showDateSeparator =
       index === 0 ||
       !isSameDay(msg.createdAt, messages[index - 1]?.createdAt);

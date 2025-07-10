@@ -23,7 +23,6 @@ const UserSearchDialog: React.FC<Props> = ({ open, onClose, onChatCreated }) => 
   const [search, setSearch] = useState("");
   const { data: users = [], isLoading } = useSearchUsersQuery(search, { skip: !search });
   const [createChat] = useCreateChatMutation();
-
   const handleChatStart = async (userId: string) => {
     try {
       const data = await createChat({ userId }).unwrap();
@@ -53,7 +52,12 @@ const UserSearchDialog: React.FC<Props> = ({ open, onClose, onChatCreated }) => 
         />
         <List>
           {users.map(u => (
-            <ListItem button key={u._id} onClick={() => handleChatStart(u._id)}>
+            <ListItem
+              key={u._id}
+              onClick={() => handleChatStart(u._id)}
+              component="li"
+              style={{ cursor: "pointer" }}
+            >
               <ListItemText primary={u.name} secondary={u.email} />
             </ListItem>
           ))}

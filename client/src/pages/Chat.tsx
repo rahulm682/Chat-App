@@ -7,27 +7,20 @@ import Sidebar from "../components/Sidebar";
 import ChatWindow from "../components/ChatWindow";
 import TopNavbar from "../components/TopNavbar";
 import UserMenu from "../components/UserMenu";
-import type { User, Message } from "../types/auth";
-import { useAppSelector } from "../store/hooks";
+import type { IChat } from "../types/api";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { logout, selectCurrentUser } from "../store/slices/userSlice";
 
-interface Chat {
-  _id: string;
-  isGroup: boolean;
-  participants: User[];
-  groupAdmin?: User;
-  chatName?: string;
-  latestMessage?: Message;
-}
 
 const Chat = () => {
-  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [selectedChat, setSelectedChat] = useState<IChat | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(
     null
   );
   const user = useAppSelector(selectCurrentUser);
   const theme = useTheme();
+  const dispatch = useAppDispatch();
 
   // Keep sidebar always visible
   useEffect(() => {
@@ -35,7 +28,7 @@ const Chat = () => {
   }, []);
 
   // Only set selected chat, do not update URL
-  const handleSelectChat = useCallback((chat: Chat) => {
+  const handleSelectChat = useCallback((chat: IChat) => {
     setSelectedChat(chat);
   }, []);
 
@@ -48,8 +41,9 @@ const Chat = () => {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem("user");
     handleUserMenuClose();
-    logout();
+    dispatch(logout());
   };
 
   return (

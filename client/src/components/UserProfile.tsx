@@ -1,9 +1,9 @@
 import React from "react";
 import { Box, Typography, Avatar } from "@mui/material";
-import type { User } from "../types/auth";
+import type { IBaseUser } from "../types/api";
 
 interface UserProfileProps {
-  user: User;
+  user: IBaseUser;
 }
 
 const UserProfile: React.FC<UserProfileProps> = ({ user }) => {

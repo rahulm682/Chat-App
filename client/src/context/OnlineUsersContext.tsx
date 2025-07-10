@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect } from "react";
-import { getSocket, onUserOnline } from "../socket/socket";
+import { getSocket } from "../socket/socket";
 import { useDispatch, useSelector } from 'react-redux';
 import { setOnlineUsers } from '../store/slices/onlineUsersSlice';
 import type { RootState } from '../store/index';

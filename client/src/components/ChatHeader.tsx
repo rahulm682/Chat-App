@@ -12,10 +12,10 @@ import {
   Call as CallIcon,
   Info as InfoIcon,
 } from "@mui/icons-material";
-import type { User } from "../types/auth";
+import type { IBaseUser } from "../types/api";
 
 interface ChatHeaderProps {
-  otherUser: User | null;
+  otherUser: IBaseUser | null;
   isOtherUserOnline: boolean;
 }
 

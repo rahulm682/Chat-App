@@ -7,14 +7,14 @@ import {
   Chip,
 } from "@mui/material";
 import { AddReaction as AddReactionIcon } from "@mui/icons-material";
-import type { Reaction, Message } from "../types/auth";
+import type { IReaction, IMessage } from "../types/api";
 import { useAddReactionMutation, useRemoveReactionMutation } from '../store/services/chatApi';
 import { selectCurrentUser } from "../store/slices/userSlice";
 import { useAppSelector } from "../store/hooks";
 
 interface MessageReactionsProps {
-  message: Message;
-  onReactionUpdate: (messageId: string, reactions: Reaction[]) => void;
+  message: IMessage;
+  onReactionUpdate: (messageId: string, reactions: IReaction[]) => void;
   refetchMessages?: () => void;
 }
 
@@ -42,7 +42,7 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({
       }
       acc[reaction.emoji].push(reaction);
       return acc;
-    }, {} as Record<string, Reaction[]>);
+    }, {} as Record<string, IReaction[]>);
   }, [reactions]);
 
   const handleReactionClick = async (emoji: string) => {
@@ -51,13 +51,13 @@ const MessageReactions: React.FC<MessageReactionsProps> = ({
     try {
       if (userReaction?.emoji === emoji) {
         // Remove reaction
-        await removeReaction({ messageId: message._id, chatId: message.chat });
+        const response = await removeReaction({ messageId: message._id, chatId: message.chat._id });
         const updatedReactions = reactions.filter((r) => !(r.user._id === user?._id && r.emoji === emoji));
         onReactionUpdate(message._id, updatedReactions);
         if (refetchMessages) refetchMessages();
       } else {
         // Add or update reaction
-        const response = await addReaction({ messageId: message._id, emoji, chatId: message.chat }).unwrap();
+        const response = await addReaction({ messageId: message._id, emoji, chatId: message.chat._id }).unwrap();
         const updatedReactions = reactions.filter((r) => r.user._id !== user?._id);
         updatedReactions.push(response);
         onReactionUpdate(message._id, updatedReactions);
